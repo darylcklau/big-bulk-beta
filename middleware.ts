@@ -28,7 +28,8 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getSession();
 
   const pathname = request.nextUrl.pathname;
-  const isProtected = protectedMatchers.some((matcher) => pathname.startsWith(matcher));
+  const isProtected = protectedMatchers.some((matcher) => pathname === matcher || pathname.startsWith(`${matcher}/`));
+
 
   if (!session && isProtected) {
     const loginUrl = new URL("/login", request.url);
