@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import type { WorkoutLog } from "@/types/database";
 
 export type ExercisePoint = {
   date: string;
@@ -17,15 +18,16 @@ export async function getExerciseHistory(exercise?: string) {
     return { exercises: [] as string[], selectedExercise: "", points: [] as ExercisePoint[] };
   }
 
-  const { data: logs } = await supabase
+  const { data } = await supabase
     .from("workout_logs")
     .select("*")
     .eq("user_id", user.id)
     .order("performed_at", { ascending: true });
 
-  const exercises = Array.from(new Set((logs ?? []).map((log) => log.exercise)));
+  const logs = (data ?? []) as WorkoutLog[];
+  const exercises = Array.from(new Set(logs.map((log) => log.exercise)));
   const selectedExercise = exercise && exercises.includes(exercise) ? exercise : exercises[0] ?? "";
-  const points = (logs ?? [])
+  const points = logs
     .filter((log) => log.exercise === selectedExercise)
     .map((log) => ({
       date: log.performed_at,
