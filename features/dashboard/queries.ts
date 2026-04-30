@@ -49,10 +49,14 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
       .gte("performed_at", startOfWeek.toISOString())
   ]);
 
+  const safeRecentLogs = (recentLogs ?? []) as WorkoutLog[];
+  const safeTodayWorkouts = (todayWorkouts ?? []) as WorkoutLog[];
+  const safeWeekLogs = (weekLogs ?? []) as WorkoutLog[];
+
   return {
-    todayWorkouts: todayWorkouts ?? [],
-    recentLogs: recentLogs ?? [],
-    totalSetsThisWeek: weekLogs?.length ?? 0,
-    estimatedVolumeThisWeek: (weekLogs ?? []).reduce((sum, log) => sum + log.volume, 0)
+    todayWorkouts: safeTodayWorkouts,
+    recentLogs: safeRecentLogs,
+    totalSetsThisWeek: safeWeekLogs.length,
+    estimatedVolumeThisWeek: safeWeekLogs.reduce((sum, log) => sum + log.volume, 0)
   };
 }
