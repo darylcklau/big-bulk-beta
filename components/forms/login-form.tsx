@@ -2,12 +2,12 @@
 
 import { useActionState } from "react";
 
-import { signInWithPassword, sendMagicLink } from "@/features/auth/actions";
+import { signInWithPassword, sendMagicLink, type AuthActionState } from "@/features/auth/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 
-const initialState = {
+const initialState: AuthActionState = {
   error: "",
   success: ""
 };
