@@ -1,64 +1,58 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 
-import { env } from "@/lib/env";
+import { parseWorkoutBatch } from "@/lib/parser";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { magicLinkSchema, passwordSignInSchema } from "@/lib/validation";
+import { naturalLanguageEntrySchema } from "@/lib/validation";
 
-export type AuthActionState = {
-  error: string;
-  success: string;
-};
-
-export async function signInWithPassword(_: AuthActionState, formData: FormData): Promise<AuthActionState> {
-  const parsed = passwordSignInSchema.safeParse({
-    email: formData.get("email"),
-    password: formData.get("password")
+export async function createWorkoutLog(_: unknown, formData: FormData) {
+  const parsedInput = naturalLanguageEntrySchema.safeParse({
+    entry: formData.get("entry")
   });
 
-  if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Unable to sign in.", success: "" };
+  if (!parsedInput.success) {
+    return { error: parsedInput.error.issues[0]?.message ?? "Unable to save workout." };
   }
 
   const supabase = await createServerSupabaseClient();
-  const { error } = await supabase.auth.signInWithPassword(parsed.data);
+  const {
+    data: { user }
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: "You need to sign in before logging workouts." };
+  }
+
+  const parsedLines = parseWorkoutBatch(parsedInput.data.entry);
+  const invalidLine = parsedLines.find((entry) => !entry.parsed);
+
+  if (invalidLine) {
+    return {
+      error: `Could not parse "${invalidLine.raw}". Use the format: Bench Press 8 reps 80kg`
+    };
+  }
+
+  const rows = parsedLines.map(({ parsed }) => ({
+    user_id: user.id,
+    exercise: parsed!.exercise,
+    reps: parsed!.reps,
+    weight: parsed!.weight,
+    unit: parsed!.unit,
+    volume: parsed!.reps * parsed!.weight,
+    source: "typed" as const,
+    performed_at: parsed!.performedAt
+  }));
+
+  const { error } = await supabase.from("workout_logs").insert(rows);
 
   if (error) {
-    return { error: error.message, success: "" };
+    return { error: error.message };
   }
 
   revalidatePath("/dashboard");
-  redirect("/dashboard");
-}
+  revalidatePath("/history");
+  revalidatePath("/log");
 
-export async function sendMagicLink(_: AuthActionState, formData: FormData): Promise<AuthActionState> {
-  const parsed = magicLinkSchema.safeParse({
-    email: formData.get("email")
-  });
-
-  if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Unable to send magic link.", success: "" };
-  }
-
-  const supabase = await createServerSupabaseClient();
-  const { error } = await supabase.auth.signInWithOtp({
-    email: parsed.data.email,
-    options: {
-      emailRedirectTo: `${env.NEXT_PUBLIC_APP_URL}/auth/callback`
-    }
-  });
-
-  if (error) {
-    return { error: error.message, success: "" };
-  }
-
-  return { error: "", success: "Magic link sent. Check your inbox." };
-}
-
-export async function signOut() {
-  const supabase = await createServerSupabaseClient();
-  await supabase.auth.signOut();
-  redirect("/login");
+  return { success: `${rows.length} set${rows.length > 1 ? "s" : ""} saved.` };
 }
