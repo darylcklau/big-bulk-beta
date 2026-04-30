@@ -124,7 +124,7 @@ function MetricCard({ label, value, icon }: { label: string; value: string; icon
   );
 }
 
-function EmptyState({ title, body, href }: { title: string; body: string; href: string }) {
+function EmptyState({ title, body, href }: { title: string; body: string; href: "/log" }) {
   return (
     <Card>
       <CardContent className="grid gap-3">
