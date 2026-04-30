@@ -44,7 +44,7 @@ export async function createWorkoutLog(_: unknown, formData: FormData) {
     performed_at: parsed!.performedAt
   }));
 
-  const { error } = await supabase.from("workout_logs").insert(rows);
+  const { error } = await supabase.from("workout_logs").insert(rows as never);
 
   if (error) {
     return { error: error.message };
